@@ -34,14 +34,20 @@ const MNG_BASE = 'https://testapi.mngkargo.com.tr/mngapi/api';
 // Response: { jwt, refreshToken, jwtExpireDate, refreshTokenExpireDate }
 app.post('/dhl/token', async (req, res) => {
   try {
-    const { customerNumber, password } = req.body;
+    const { customerNumber, password, clientId, clientSecret } = req.body;
     if (!customerNumber || !password) {
       return res.status(400).json({ error: 'customerNumber ve password gerekli' });
     }
-    console.log('[MNG Token] customerNumber:', customerNumber);
+    console.log('[MNG Token] customerNumber:', customerNumber, '| clientId:', clientId ? clientId.slice(0,8)+'...' : 'YOK');
+
+    const headers = { 'Content-Type': 'application/json' };
+    // X-IBM-Client-Id ve X-IBM-Client-Secret - sandbox portal API Key/Secret
+    if (clientId) headers['X-IBM-Client-Id'] = clientId;
+    if (clientSecret) headers['X-IBM-Client-Secret'] = clientSecret;
+
     const response = await fetch(`${MNG_BASE}/token`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ customerNumber: String(customerNumber), password: String(password), identityType: 1 }),
     });
     const text = await response.text();
