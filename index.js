@@ -6,7 +6,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const MNG = 'https://testapi.mngkargo.com.tr/mngapi/api';
+const MNG = 'https://api.mngkargo.com.tr/mngapi/api';
 
 // HEALTH
 app.get('/health', (_, res) => res.json({ status: 'ok', version: '4.0' }));
