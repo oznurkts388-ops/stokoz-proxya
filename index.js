@@ -6,7 +6,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Shopify proxy
+// ─── SHOPIFY PROXY ───────────────────────────────────────────────────────────
 app.all('/shopify/*', async (req, res) => {
   const storeUrl = req.headers['x-store-url'];
   const accessToken = req.headers['x-access-token'];
@@ -27,6 +27,7 @@ app.all('/shopify/*', async (req, res) => {
       },
       body: ['GET', 'HEAD'].includes(req.method) ? undefined : JSON.stringify(req.body),
     });
+
     const data = await response.json();
     res.status(response.status).json(data);
   } catch (err) {
@@ -34,14 +35,65 @@ app.all('/shopify/*', async (req, res) => {
   }
 });
 
-// DHL eCommerce (MNG Kargo) - Token
+// ─── DHL / MNG KARGO PROXY ───────────────────────────────────────────────────
+const MNG_BASE = 'https://testapi.mngkargo.com.tr/mngapi/api';
+
+// DHL Token - OAuth2 client_credentials (form-encoded)
 app.post('/dhl/token', async (req, res) => {
   try {
-    const response = await fetch('https://testapi.mngkargo.com.tr/mngapi/api/token', {
+    const { clientId, clientSecret } = req.body;
+
+    if (!clientId || !clientSecret) {
+      return res.status(400).json({ error: 'clientId ve clientSecret gerekli' });
+    }
+
+    // MNG Kargo Identity API - FORM ENCODED zorunlu
+    const formBody = new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: clientId,
+      client_secret: clientSecret,
+    });
+
+    const response = await fetch(`${MNG_BASE}/identity/connect/token`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: formBody.toString(),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return res.status(response.status).json(data);
+    }
+
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DHL - Plus Command (sipariş oluştur)
+app.post('/dhl/pluscmdapi/:action', async (req, res) => {
+  try {
+    const token = req.headers['x-dhl-token'];
+    const customerNumber = req.headers['x-dhl-customer'];
+
+    if (!token) {
+      return res.status(401).json({ error: 'x-dhl-token header gerekli' });
+    }
+
+    const response = await fetch(`${MNG_BASE}/pluscommand/${req.params.action}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'MNG-CustomerNumber': customerNumber || '',
+      },
       body: JSON.stringify(req.body),
     });
+
     const data = await response.json();
     res.status(response.status).json(data);
   } catch (err) {
@@ -49,21 +101,26 @@ app.post('/dhl/token', async (req, res) => {
   }
 });
 
-// DHL eCommerce (MNG Kargo) - Diger istekler
-app.all('/dhl/*', async (req, res) => {
-  const token = req.headers['x-dhl-token'];
-  const path = req.path.replace('/dhl', '');
-  const dhlUrl = `https://testapi.mngkargo.com.tr/mngapi/api${path}`;
-
+// DHL - Barcode Command (barkod oluştur)
+app.post('/dhl/barcodecmdapi/:action', async (req, res) => {
   try {
-    const response = await fetch(dhlUrl, {
-      method: req.method,
+    const token = req.headers['x-dhl-token'];
+    const customerNumber = req.headers['x-dhl-customer'];
+
+    if (!token) {
+      return res.status(401).json({ error: 'x-dhl-token header gerekli' });
+    }
+
+    const response = await fetch(`${MNG_BASE}/barcodecommand/${req.params.action}`, {
+      method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'MNG-CustomerNumber': customerNumber || '',
       },
-      body: ['GET', 'HEAD'].includes(req.method) ? undefined : JSON.stringify(req.body),
+      body: JSON.stringify(req.body),
     });
+
     const data = await response.json();
     res.status(response.status).json(data);
   } catch (err) {
@@ -71,7 +128,36 @@ app.all('/dhl/*', async (req, res) => {
   }
 });
 
-app.get('/health', (_, res) => res.json({ status: 'ok' }));
+// DHL - Plus Query (takip)
+app.get('/dhl/plusqueryapi/:action/:barcode', async (req, res) => {
+  try {
+    const token = req.headers['x-dhl-token'];
+    const customerNumber = req.headers['x-dhl-customer'];
+
+    if (!token) {
+      return res.status(401).json({ error: 'x-dhl-token header gerekli' });
+    }
+
+    const response = await fetch(
+      `${MNG_BASE}/plusquery/${req.params.action}/${req.params.barcode}`,
+      {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'MNG-CustomerNumber': customerNumber || '',
+        },
+      }
+    );
+
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── HEALTH CHECK ─────────────────────────────────────────────────────────────
+app.get('/health', (_, res) => res.json({ status: 'ok', version: '2.0' }));
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`Proxy running on port ${PORT}`));
