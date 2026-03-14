@@ -6,6 +6,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Shopify proxy
 app.all('/shopify/*', async (req, res) => {
   const storeUrl = req.headers['x-store-url'];
   const accessToken = req.headers['x-access-token'];
@@ -26,7 +27,43 @@ app.all('/shopify/*', async (req, res) => {
       },
       body: ['GET', 'HEAD'].includes(req.method) ? undefined : JSON.stringify(req.body),
     });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
+// DHL eCommerce (MNG Kargo) - Token
+app.post('/dhl/token', async (req, res) => {
+  try {
+    const response = await fetch('https://testapi.mngkargo.com.tr/mngapi/api/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body),
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DHL eCommerce (MNG Kargo) - Diger istekler
+app.all('/dhl/*', async (req, res) => {
+  const token = req.headers['x-dhl-token'];
+  const path = req.path.replace('/dhl', '');
+  const dhlUrl = `https://testapi.mngkargo.com.tr/mngapi/api${path}`;
+
+  try {
+    const response = await fetch(dhlUrl, {
+      method: req.method,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: ['GET', 'HEAD'].includes(req.method) ? undefined : JSON.stringify(req.body),
+    });
     const data = await response.json();
     res.status(response.status).json(data);
   } catch (err) {
