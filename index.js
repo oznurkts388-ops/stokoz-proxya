@@ -38,24 +38,53 @@ app.post('/dhl/token', async (req, res) => {
     if (!customerNumber || !password) {
       return res.status(400).json({ error: 'customerNumber ve password gerekli' });
     }
-    console.log('[MNG Token] customerNumber:', customerNumber, '| clientId:', clientId ? clientId.slice(0,8)+'...' : 'YOK');
 
-    const headers = { 'Content-Type': 'application/json' };
-    // X-IBM-Client-Id ve X-IBM-Client-Secret - sandbox portal API Key/Secret
-    if (clientId) headers['X-IBM-Client-Id'] = clientId;
-    if (clientSecret) headers['X-IBM-Client-Secret'] = clientSecret;
+    // Her iki yöntemi dene: önce IBM header ile, sonra header'sız
+    const attempts = [
+      // Yöntem 1: X-IBM header'lı (sandbox portal key ile)
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(clientId && { 'X-IBM-Client-Id': clientId }),
+          ...(clientSecret && { 'X-IBM-Client-Secret': clientSecret }),
+        },
+        body: { customerNumber: String(customerNumber), password: String(password), identityType: 1 },
+        label: 'IBM-header'
+      },
+      // Yöntem 2: Header'sız (sadece body)
+      {
+        headers: { 'Content-Type': 'application/json' },
+        body: { customerNumber: String(customerNumber), password: String(password), identityType: 1 },
+        label: 'no-header'
+      },
+    ];
 
-    const response = await fetch(`${MNG_BASE}/token`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ customerNumber: String(customerNumber), password: String(password), identityType: 1 }),
-    });
-    const text = await response.text();
-    console.log('[MNG Token] status:', response.status, '| body:', text.slice(0, 300));
-    let data;
-    try { data = JSON.parse(text); } catch { data = { jwt: text.trim() }; }
-    if (!response.ok) return res.status(response.status).json(data);
-    res.json(data);
+    let lastStatus = 0;
+    let lastBody = '';
+
+    for (const attempt of attempts) {
+      const response = await fetch(`${MNG_BASE}/token`, {
+        method: 'POST',
+        headers: attempt.headers,
+        body: JSON.stringify(attempt.body),
+      });
+      const text = await response.text();
+      console.log(`[MNG Token][${attempt.label}] status:${response.status} body:${text.slice(0,200)}`);
+      lastStatus = response.status;
+      lastBody = text;
+
+      if (response.ok) {
+        let data;
+        try { data = JSON.parse(text); } catch { data = { jwt: text.trim() }; }
+        return res.json(data);
+      }
+    }
+
+    // Her iki yöntem de başarısız
+    let errData;
+    try { errData = JSON.parse(lastBody); } catch { errData = { error: lastBody }; }
+    return res.status(lastStatus || 401).json(errData);
+
   } catch (err) {
     console.error('[MNG Token] Error:', err.message);
     res.status(500).json({ error: err.message });
