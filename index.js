@@ -5,11 +5,13 @@ import fetch from 'node-fetch';
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.text({ type: 'text/xml', limit: '10mb' }));
+app.use(express.raw({ type: 'application/xml', limit: '10mb' }));
 
 const MNG = 'https://api.mngkargo.com.tr/mngapi/api';
 
 // HEALTH
-app.get('/health', (_, res) => res.json({ status: 'ok', version: '4.0' }));
+app.get('/health', (_, res) => res.json({ status: 'ok', version: '5.0' }));
 
 // SHOPIFY
 app.all('/shopify/*', async (req, res) => {
@@ -28,10 +30,6 @@ app.all('/shopify/*', async (req, res) => {
 });
 
 // MNG TOKEN
-// Spec: POST /mngapi/api/token
-// Headers: X-IBM-Client-Id, X-IBM-Client-Secret
-// Body: { customerNumber, password, identityType: 1 }
-// Response: { jwt, refreshToken, jwtExpireDate, ... }
 app.post('/dhl/token', async (req, res) => {
   const { customerNumber, password, clientId, clientSecret } = req.body;
   console.log('[TOKEN] num:', customerNumber, 'clientId:', clientId?.slice(0,8));
@@ -105,5 +103,51 @@ app.get('/dhl/plusqueryapi/:action/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ─────────────────────────────────────────────
+// İZİBİZ E-FATURA / E-ARŞİV SOAP PROXY
+// Her istek: body=SOAP XML, header x-izibiz-url=hedef URL
+// ─────────────────────────────────────────────
+
+async function izibizProxy(req, res) {
+  const targetUrl = req.headers['x-izibiz-url'];
+  const soapAction = req.headers['soapaction'] || req.headers['SOAPAction'] || '';
+
+  if (!targetUrl) {
+    return res.status(400).send('<error>x-izibiz-url header eksik</error>');
+  }
+
+  // Body: express.text() ile string gelir
+  const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+
+  console.log('[IZIBIZ]', targetUrl.slice(-30), 'action:', soapAction.slice(-30));
+
+  try {
+    const r = await fetch(targetUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/xml;charset=UTF-8',
+        'SOAPAction': soapAction,
+      },
+      body,
+    });
+
+    const txt = await r.text();
+    console.log('[IZIBIZ] status:', r.status, 'resp:', txt.slice(0, 150));
+    res.status(r.status).set('Content-Type', 'text/xml;charset=UTF-8').send(txt);
+  } catch (e) {
+    console.error('[IZIBIZ] err:', e.message);
+    res.status(500).send(`<error>${e.message}</error>`);
+  }
+}
+
+// İzibiz Auth (Login/Logout)
+app.post('/izibiz/auth', izibizProxy);
+
+// İzibiz e-Arşiv
+app.post('/izibiz/earsiv', izibizProxy);
+
+// İzibiz e-Fatura
+app.post('/izibiz/efatura', izibizProxy);
+
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`Proxy v4.0 port ${PORT}`));
+app.listen(PORT, () => console.log(`Proxy v5.0 port ${PORT}`));
