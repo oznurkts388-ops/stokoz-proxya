@@ -28,8 +28,18 @@ function getBearer(req) {
 
 // HEALTH
 app.get('/health', (_, res) =>
-  res.json({ ok: true, ts: Date.now(), mngBase: MNG_BASE, version: '5.2' })
+  res.json({ ok: true, ts: Date.now(), mngBase: MNG_BASE, version: '5.3' })
 );
+
+app.get('/myip', async (_, res) => {
+  try {
+    const r = await fetch('https://api.ipify.org?format=json');
+    const data = await r.json();
+    res.json({ outboundIp: data.ip });
+  } catch (e) {
+    res.json({ error: e.message });
+  }
+});
 
 // SHOPIFY
 app.all('/shopify/*', async (req, res) => {
