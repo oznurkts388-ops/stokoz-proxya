@@ -425,15 +425,15 @@ function buildGetInvoiceSoapXmlNode(sessionId, opts) {
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsdl="http://schemas.i2i.com/ei/wsdl" xmlns:ent="http://schemas.i2i.com/ei/entity">
 <soapenv:Body>
 <wsdl:GetInvoiceRequest>
-<REQUEST_HEADER>
-<SESSION_ID>${escapeXml(sessionId)}</SESSION_ID>
-<COMPRESSED>N</COMPRESSED>
-<APPLICATION_NAME>STOKOZ</APPLICATION_NAME>
-</REQUEST_HEADER>
-<INVOICE_SEARCH_KEY>
+<ent:REQUEST_HEADER>
+<ent:SESSION_ID>${escapeXml(sessionId)}</ent:SESSION_ID>
+<ent:COMPRESSED>N</ent:COMPRESSED>
+<ent:APPLICATION_NAME>STOKOZ</ent:APPLICATION_NAME>
+</ent:REQUEST_HEADER>
+<wsdl:INVOICE_SEARCH_KEY>
 ${searchBlock}
-</INVOICE_SEARCH_KEY>
-<HEADER_ONLY>${ho}</HEADER_ONLY>
+</wsdl:INVOICE_SEARCH_KEY>
+<wsdl:HEADER_ONLY>${ho}</wsdl:HEADER_ONLY>
 </wsdl:GetInvoiceRequest>
 </soapenv:Body>
 </soapenv:Envelope>`;
@@ -499,13 +499,13 @@ async function izibizFetchEArchiveList(env, sessionId, { limit, startDate, endDa
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsdl="http://schemas.i2i.com/ei/wsdl" xmlns:arc="http://schemas.i2i.com/ei/wsdl/archive">
 <soapenv:Body>
 <arc:GetEArchiveInvoiceListRequest>
-<REQUEST_HEADER>
-<SESSION_ID>${escapeXml(sessionId)}</SESSION_ID>
-</REQUEST_HEADER>
-<LIMIT>${lim}</LIMIT>
-<START_DATE>${escapeXml(sd)}</START_DATE>
-<END_DATE>${escapeXml(ed)}</END_DATE>
-<HEADER_ONLY>Y</HEADER_ONLY>
+<arc:REQUEST_HEADER>
+<wsdl:SESSION_ID>${escapeXml(sessionId)}</wsdl:SESSION_ID>
+</arc:REQUEST_HEADER>
+<arc:LIMIT>${lim}</arc:LIMIT>
+<arc:START_DATE>${escapeXml(sd)}</arc:START_DATE>
+<arc:END_DATE>${escapeXml(ed)}</arc:END_DATE>
+<arc:HEADER_ONLY>Y</arc:HEADER_ONLY>
 </arc:GetEArchiveInvoiceListRequest>
 </soapenv:Body>
 </soapenv:Envelope>`;
@@ -727,25 +727,23 @@ app.post('/izibiz/send-earchive', async (req, res) => {
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsdl="http://schemas.i2i.com/ei/wsdl" xmlns:arc="http://schemas.i2i.com/ei/wsdl/archive">
 <soapenv:Body>
 <arc:ArchiveInvoiceExtendedRequest>
-<REQUEST_HEADER>
-<SESSION_ID>${escapeXml(sessionId)}</SESSION_ID>
-<COMPRESSED>N</COMPRESSED>
-<APPLICATION_NAME>STOKOZ</APPLICATION_NAME>
-</REQUEST_HEADER>
-<ArchiveInvoiceExtendedContent>
-<INVOICE_PROPERTIES>
-<EARSIV_FLAG>Y</EARSIV_FLAG>
-<EARSIV_PROPERTIES>
-<EARSIV_TYPE>${earsivTipi}</EARSIV_TYPE>
-<SUB_STATUS>${subStatus}</SUB_STATUS>
-<EARSIV_EMAIL_FLAG>${emailFlag}</EARSIV_EMAIL_FLAG>
-${emailFlag === 'Y' ? `<EARSIV_EMAIL_ADDR>${escapeXml(archiveEmail)}</EARSIV_EMAIL_ADDR>` : ''}
-${env !== 'prod' && env !== 'production' && env !== 'live' ? '<EARCHIVE_TEST_FLAG>Y</EARCHIVE_TEST_FLAG>' : ''}
-<XSLT_NAME>DEFAULT</XSLT_NAME>
-</EARSIV_PROPERTIES>
-</INVOICE_PROPERTIES>
-<INVOICE_CONTENT>${invoiceContent}</INVOICE_CONTENT>
-</ArchiveInvoiceExtendedContent>
+<arc:REQUEST_HEADER>
+<wsdl:SESSION_ID>${escapeXml(sessionId)}</wsdl:SESSION_ID>
+<wsdl:COMPRESSED>N</wsdl:COMPRESSED>
+<wsdl:APPLICATION_NAME>STOKOZ</wsdl:APPLICATION_NAME>
+</arc:REQUEST_HEADER>
+<arc:ArchiveInvoiceExtendedContent>
+<arc:INVOICE_PROPERTIES>
+<arc:EARSIV_FLAG>Y</arc:EARSIV_FLAG>
+<arc:EARSIV_PROPERTIES>
+<arc:EARSIV_TYPE>${earsivTipi}</arc:EARSIV_TYPE>
+<arc:SUB_STATUS>${subStatus}</arc:SUB_STATUS>
+<arc:EARSIV_EMAIL_FLAG>${emailFlag}</arc:EARSIV_EMAIL_FLAG>
+${emailFlag === 'Y' ? `<arc:EARSIV_EMAIL>${escapeXml(archiveEmail)}</arc:EARSIV_EMAIL>` : ''}
+</arc:EARSIV_PROPERTIES>
+</arc:INVOICE_PROPERTIES>
+<arc:INVOICE_CONTENT>${invoiceContent}</arc:INVOICE_CONTENT>
+</arc:ArchiveInvoiceExtendedContent>
 </arc:ArchiveInvoiceExtendedRequest>
 </soapenv:Body>
 </soapenv:Envelope>`;
@@ -801,16 +799,16 @@ app.post('/izibiz/send-invoice', async (req, res) => {
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsdl="http://schemas.i2i.com/ei/wsdl" xmlns:ent="http://schemas.i2i.com/ei/entity">
 <soapenv:Body>
 <wsdl:SendInvoiceRequest>
-<REQUEST_HEADER>
-<SESSION_ID>${escapeXml(sessionId)}</SESSION_ID>
-<COMPRESSED>N</COMPRESSED>
-<APPLICATION_NAME>STOKOZ</APPLICATION_NAME>
-</REQUEST_HEADER>
-<SENDER vkn="${escapeXml(senderVkn || '')}" alias="${escapeXml(senderAlias || 'urn:mail:defaultgb@izibiz.com.tr')}" />
-<RECEIVER vkn="${escapeXml(receiverVkn || '')}" alias="${escapeXml(receiverAlias || 'urn:mail:defaultpk@izibiz.com.tr')}" />
-<INVOICE>
-<CONTENT>${invoiceContent}</CONTENT>
-</INVOICE>
+<ent:REQUEST_HEADER>
+<ent:SESSION_ID>${escapeXml(sessionId)}</ent:SESSION_ID>
+<ent:COMPRESSED>N</ent:COMPRESSED>
+<ent:APPLICATION_NAME>STOKOZ</ent:APPLICATION_NAME>
+</ent:REQUEST_HEADER>
+<wsdl:SENDER vkn="${escapeXml(senderVkn || '')}" alias="${escapeXml(senderAlias || 'urn:mail:defaultgb@izibiz.com.tr')}" />
+<wsdl:RECEIVER vkn="${escapeXml(receiverVkn || '')}" alias="${escapeXml(receiverAlias || 'urn:mail:defaultpk@izibiz.com.tr')}" />
+<wsdl:INVOICE>
+<wsdl:CONTENT>${invoiceContent}</wsdl:CONTENT>
+</wsdl:INVOICE>
 </wsdl:SendInvoiceRequest>
 </soapenv:Body>
 </soapenv:Envelope>`;
@@ -862,10 +860,10 @@ app.post('/izibiz/get-earchive-status', async (req, res) => {
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsdl="http://schemas.i2i.com/ei/wsdl" xmlns:arc="http://schemas.i2i.com/ei/wsdl/archive">
 <soapenv:Body>
 <arc:GetEArchiveInvoiceStatusRequest>
-<REQUEST_HEADER>
-<SESSION_ID>${escapeXml(sessionId)}</SESSION_ID>
-</REQUEST_HEADER>
-<UUID>${escapeXml(uuid)}</UUID>
+<arc:REQUEST_HEADER>
+<wsdl:SESSION_ID>${escapeXml(sessionId)}</wsdl:SESSION_ID>
+</arc:REQUEST_HEADER>
+<arc:UUID>${escapeXml(uuid)}</arc:UUID>
 </arc:GetEArchiveInvoiceStatusRequest>
 </soapenv:Body>
 </soapenv:Envelope>`;
